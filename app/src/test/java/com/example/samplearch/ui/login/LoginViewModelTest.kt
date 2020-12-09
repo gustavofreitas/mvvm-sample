@@ -10,6 +10,9 @@ import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runBlockingTest
+import org.hamcrest.CoreMatchers.equalTo
+import org.hamcrest.CoreMatchers.instanceOf
+import org.hamcrest.MatcherAssert.assertThat
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -24,7 +27,6 @@ class LoginViewModelTest {
     private lateinit var repository: LoginRepository
 
     private lateinit var mockedUiStateObserver: Observer<LoginUiState>
-    private lateinit var mockedFormStateObserver: Observer<LoginFormState>
 
     @get:Rule
     val instantTaskExecutorRule = InstantTaskExecutorRule()
@@ -52,25 +54,26 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `should return success when login request receive right credentials`() =
-        runBlockingTest {
-            val stateSlot = mutableListOf<LoginUiState>()
+    fun `should return success when login request receive right credentials`() = runBlockingTest{
+        val stateSlot = mutableListOf<LoginUiState>()
 
-            coEvery { repository.login(any(), any()) } returns Result.Success(fakeUser)
+        coEvery { repository.login(any(), any()) } returns Result.Success(fakeUser)
 
-            viewModel.login(fakeSuccessLogin, fakeSuccessPass)
+        viewModel.login(fakeSuccessLogin, fakeSuccessPass)
 
-            verify(exactly = 2) { mockedUiStateObserver.onChanged(capture(stateSlot)) }
+        verify(exactly = 2) {mockedUiStateObserver.onChanged(capture(stateSlot))}
 
-            verifyOrder {
-                mockedUiStateObserver.run{
-                    onChanged(LoginUiState.Loading)
-                    onChanged(any<LoginUiState.Success>())
-                }
+        verifyOrder {
+            mockedUiStateObserver.run {
+                onChanged(LoginUiState.Loading)
+                onChanged(any<LoginUiState.Success>())
             }
-
-            assert((stateSlot.last() as LoginUiState.Success).loggedInUser.displayName == fakeDisplayName)
         }
+        assertThat(
+            (stateSlot.last() as LoginUiState.Success).loggedInUser.displayName,
+            equalTo(fakeDisplayName)
+        )
+    }
 
     @Test
     fun `should return error when login request receive wrong credentials`() =
@@ -90,7 +93,10 @@ class LoginViewModelTest {
                 }
             }
 
-            assert((stateSlot.last() as LoginUiState.Error).error is UserNotAuthenticatedException)
+            assertThat(
+                (stateSlot.last() as LoginUiState.Error).error,
+                instanceOf(UserNotAuthenticatedException::class.java)
+            )
         }
 
     @After
